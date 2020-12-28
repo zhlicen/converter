@@ -61,7 +61,8 @@ type Table2Struct struct {
 	config         *T2tConfig
 	err            error
 	realNameMethod string
-	enableJsonTag  bool   // 是否添加json的tag, 默认不添加
+	enableJsonTag  bool // 是否添加json的tag, 默认不添加
+	genTableTags   bool
 	packageName    string // 生成struct的包名(默认为空的话, 则取名为: package model)
 	tagKey         string // tag字段的key值,默认是orm
 	dateToTime     bool   // 是否将 date相关字段转换为 time.Time,默认否
@@ -122,6 +123,11 @@ func (t *Table2Struct) Prefix(p string) *Table2Struct {
 
 func (t *Table2Struct) EnableJsonTag(p bool) *Table2Struct {
 	t.enableJsonTag = p
+	return t
+}
+
+func (t *Table2Struct) EnableTableTags(p bool) *Table2Struct {
+	t.genTableTags = p
 	return t
 }
 
@@ -259,6 +265,51 @@ type column struct {
 	Tag           string
 }
 
+func (c *column) genTags(sqlTagKey string, enableJSONTag bool, jsonTag string, genTableTags bool) string {
+	tagList := make(map[string]string)
+	tagList[sqlTagKey] = c.Tag
+	if enableJSONTag {
+		tagList["json"] = jsonTag
+	}
+	if genTableTags {
+		commentSegments := strings.Split(c.ColumnComment, "|")
+		if len(commentSegments) > 1 {
+			tagList["t_name"] = commentSegments[0]
+		}
+		switch c.Type {
+		case "int64":
+			tagList["t_fm"] = "SINT"
+			tagList["t_vt"] = "INT"
+		case "bool":
+			tagList["t_fm"] = "SBOOL"
+			tagList["t_vt"] = "INT"
+		case "time.Time":
+			tagList["t_fm"] = "STIME"
+			tagList["t_vt"] = "TIME"
+		case "float64":
+			tagList["t_fm"] = "SDOUBLE"
+			tagList["t_vt"] = "DOUBLE"
+		case "string":
+			tagList["t_fm"] = "SSTR"
+			tagList["t_vt"] = "STRING"
+		default:
+			tagList["t_ignore"] = ""
+		}
+		if c.Nullable == "YES" {
+			tagList["t_fm"] += "|SNULLABLE"
+		}
+	}
+	var tags []string
+	for k, v := range tagList {
+		if v != "" {
+			tags = append(tags, fmt.Sprintf("%s:\"%s\"", k, v))
+		} else {
+			tags = append(tags, fmt.Sprintf("%s", k))
+		}
+	}
+	return strings.Join(tags, " ")
+}
+
 // Function for fetching schema definition of passed table
 func (t *Table2Struct) getColumns(table ...string) (tableColumns map[string][]column, err error) {
 	// 根据设置,判断是否要把 date 相关字段替换为 string
@@ -299,7 +350,6 @@ func (t *Table2Struct) getColumns(table ...string) (tableColumns map[string][]co
 
 		//col.Json = strings.ToLower(col.ColumnName)
 		col.Tag = col.ColumnName
-		col.ColumnComment = col.ColumnComment
 		col.ColumnName = t.camelCase(col.ColumnName)
 		col.Type = typeForMysqlToGo[col.Type]
 		jsonTag := col.Tag
@@ -326,12 +376,7 @@ func (t *Table2Struct) getColumns(table ...string) (tableColumns map[string][]co
 		if t.tagKey == "" {
 			t.tagKey = "orm"
 		}
-		if t.enableJsonTag {
-			//col.Json = fmt.Sprintf("`json:\"%s\" %s:\"%s\"`", col.Json, t.config.TagKey, col.Json)
-			col.Tag = fmt.Sprintf("`%s:\"%s\" json:\"%s\"`", t.tagKey, col.Tag, jsonTag)
-		} else {
-			col.Tag = fmt.Sprintf("`%s:\"%s\"`", t.tagKey, col.Tag)
-		}
+		col.Tag = col.genTags(t.tagKey, t.enableJsonTag, jsonTag, col.genTableTags)
 		//columns = append(columns, col)
 		if _, ok := tableColumns[col.TableName]; !ok {
 			tableColumns[col.TableName] = []column{}
