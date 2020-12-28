@@ -307,7 +307,7 @@ func (c *column) genTags(sqlTagKey string, enableJSONTag bool, jsonTag string, g
 			tags = append(tags, fmt.Sprintf("%s", k))
 		}
 	}
-	return strings.Join(tags, " ")
+	return "`" + strings.Join(tags, " ") + "`"
 }
 
 // Function for fetching schema definition of passed table
