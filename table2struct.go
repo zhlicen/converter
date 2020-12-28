@@ -376,7 +376,7 @@ func (t *Table2Struct) getColumns(table ...string) (tableColumns map[string][]co
 		if t.tagKey == "" {
 			t.tagKey = "orm"
 		}
-		col.Tag = col.genTags(t.tagKey, t.enableJsonTag, jsonTag, col.genTableTags)
+		col.Tag = col.genTags(t.tagKey, t.enableJsonTag, jsonTag, t.genTableTags)
 		//columns = append(columns, col)
 		if _, ok := tableColumns[col.TableName]; !ok {
 			tableColumns[col.TableName] = []column{}
