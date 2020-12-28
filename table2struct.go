@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -303,8 +304,15 @@ func (c *column) genTags(sqlTagKey string, enableJSONTag bool, jsonTag string, g
 			}
 		}
 	}
+	var tagKeys []string
+	// sort keys
+	for k := range tagList {
+		tagKeys = append(tagKeys, k)
+	}
+	sort.Strings(tagKeys)
 	var tags []string
-	for k, v := range tagList {
+	for _, k := range tagKeys {
+		v := tagList[k]
 		if v != "" {
 			tags = append(tags, fmt.Sprintf("%s:\"%s\"", k, v))
 		} else {
