@@ -295,8 +295,10 @@ func (c *column) genTags(sqlTagKey string, enableJSONTag bool, jsonTag string, g
 		default:
 			tagList["t_ignore"] = ""
 		}
-		if c.Nullable == "YES" {
-			tagList["t_fm"] += "|SNULLABLE"
+		if _, ok := tagList["t_fm"]; ok {
+			if c.Nullable == "YES" {
+				tagList["t_fm"] += "|SNULLABLE"
+			}
 		}
 	}
 	var tags []string
