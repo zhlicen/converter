@@ -275,6 +275,8 @@ func (c *column) genTags(sqlTagKey string, enableJSONTag bool, jsonTag string, g
 		commentSegments := strings.Split(c.ColumnComment, "|")
 		if len(commentSegments) > 1 {
 			tagList["t_name"] = commentSegments[0]
+		} else {
+			tagList["t_name"] = c.ColumnName
 		}
 		switch c.Type {
 		case "int64":
