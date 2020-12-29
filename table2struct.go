@@ -283,15 +283,18 @@ func (c *column) genTags(sqlTagKey string, enableJSONTag bool, jsonTag string, g
 		case "int64":
 			tagList["t_fm"] = "SINT"
 			tagList["t_vt"] = "INT"
+			tagList["t_order"] = "true"
 		case "bool":
 			tagList["t_fm"] = "SBOOL"
 			tagList["t_vt"] = "INT"
 		case "time.Time":
 			tagList["t_fm"] = "STIME"
 			tagList["t_vt"] = "TIME"
+			tagList["t_order"] = "true"
 		case "float64":
 			tagList["t_fm"] = "SDOUBLE"
 			tagList["t_vt"] = "DOUBLE"
+			tagList["t_order"] = "true"
 		case "string":
 			tagList["t_fm"] = "SSTR"
 			tagList["t_vt"] = "STRING"
