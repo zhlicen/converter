@@ -15,42 +15,78 @@ import (
 
 //map for converting mysql type to golang types
 var typeForMysqlToGo = map[string]string{
-	"int":                "int64",
-	"integer":            "int64",
-	"tinyint":            "int64",
-	"smallint":           "int64",
-	"mediumint":          "int64",
-	"bigint":             "int64",
-	"int unsigned":       "int64",
-	"integer unsigned":   "int64",
-	"tinyint unsigned":   "int64",
-	"smallint unsigned":  "int64",
-	"mediumint unsigned": "int64",
-	"bigint unsigned":    "int64",
-	"bit":                "int64",
-	"bool":               "bool",
-	"enum":               "string",
-	"set":                "string",
-	"varchar":            "string",
-	"char":               "string",
-	"tinytext":           "string",
-	"mediumtext":         "string",
-	"text":               "string",
-	"longtext":           "string",
-	"blob":               "string",
-	"tinyblob":           "string",
-	"mediumblob":         "string",
-	"longblob":           "string",
-	"date":               "time.Time", // time.Time or string
-	"datetime":           "time.Time", // time.Time or string
-	"timestamp":          "time.Time", // time.Time or string
-	"time":               "time.Time", // time.Time or string
-	"float":              "float64",
-	"double":             "float64",
-	"decimal":            "float64",
-	"binary":             "string",
-	"varbinary":          "string",
-	"json":               "json.RawMessage",
+	"int":                         "int64",
+	"integer":                     "int64",
+	"tinyint":                     "int64",
+	"smallint":                    "int64",
+	"mediumint":                   "int64",
+	"bigint":                      "int64",
+	"int unsigned":                "int64",
+	"integer unsigned":            "int64",
+	"tinyint unsigned":            "int64",
+	"smallint unsigned":           "int64",
+	"mediumint unsigned":          "int64",
+	"bigint unsigned":             "int64",
+	"bit":                         "int64",
+	"bool":                        "bool",
+	"enum":                        "string",
+	"set":                         "string",
+	"varchar":                     "string",
+	"char":                        "string",
+	"tinytext":                    "string",
+	"mediumtext":                  "string",
+	"text":                        "string",
+	"longtext":                    "string",
+	"blob":                        "string",
+	"tinyblob":                    "string",
+	"mediumblob":                  "string",
+	"longblob":                    "string",
+	"date":                        "time.Time", // time.Time or string
+	"datetime":                    "time.Time", // time.Time or string
+	"timestamp":                   "time.Time", // time.Time or string
+	"time":                        "time.Time", // time.Time or string
+	"float":                       "float64",
+	"double":                      "float64",
+	"decimal":                     "float64",
+	"binary":                      "string",
+	"varbinary":                   "string",
+	"json":                        "json.RawMessage",
+	"nullable.int":                "sql.Int64",
+	"nullable.integer":            "sql.Int64",
+	"nullable.tinyint":            "sql.Int64",
+	"nullable.smallint":           "sql.Int64",
+	"nullable.mediumint":          "sql.Int64",
+	"nullable.bigint":             "sql.Int64",
+	"nullable.int unsigned":       "sql.Int64",
+	"nullable.integer unsigned":   "sql.Int64",
+	"nullable.tinyint unsigned":   "sql.Int64",
+	"nullable.smallint unsigned":  "sql.Int64",
+	"nullable.mediumint unsigned": "sql.Int64",
+	"nullable.bigint unsigned":    "sql.Int64",
+	"nullable.bit":                "sql.Int64",
+	"nullable.bool":               "sql.NullBool",
+	"nullable.enum":               "sql.NullString",
+	"nullable.set":                "sql.NullString",
+	"nullable.varchar":            "sql.NullString",
+	"nullable.char":               "sql.NullString",
+	"nullable.tinytext":           "sql.NullString",
+	"nullable.mediumtext":         "sql.NullString",
+	"nullable.text":               "sql.NullString",
+	"nullable.longtext":           "sql.NullString",
+	"nullable.blob":               "sql.NullString",
+	"nullable.tinyblob":           "sql.NullString",
+	"nullable.mediumblob":         "sql.NullString",
+	"nullable.longblob":           "sql.NullString",
+	"nullable.date":               "sql.NullTime", // time.Time or string
+	"nullable.datetime":           "sql.NullTime", // time.Time or string
+	"nullable.timestamp":          "sql.NullTime", // time.Time or string
+	"nullable.time":               "sql.NullTime", // time.Time or string
+	"nullable.float":              "sql.NullFloat64",
+	"nullable.double":             "sql.NullFloat64",
+	"nullable.decimal":            "sql.NullFloat64",
+	"nullable.binary":             "sql.NullString",
+	"nullable.varbinary":          "sql.NullString",
+	"nullable.json":               "sql.NullString",
 }
 
 type Table2Struct struct {
@@ -76,6 +112,7 @@ type T2tConfig struct {
 	JsonTagToHump    bool // json tag是否转为驼峰，默认为false，不转换
 	UcFirstOnly      bool // 字段首字母大写的同时, 是否要把其他字母转换为小写,默认false不转换
 	SeperatFile      bool // 每个struct放入单独的文件,默认false,放入同一个文件
+	GenNullableType  bool // 可空字段是否生成sql.Null*类型
 }
 
 func NewTable2Struct() *Table2Struct {
@@ -222,6 +259,11 @@ func (t *Table2Struct) Run() error {
 		importContent += "import \"encoding/json\"\n\n"
 	}
 
+	// 支持sql.Null*
+	if strings.Contains(structContent, "sql.") {
+		importContent += "import \"database/sql\"\n\n"
+	}
+
 	// 写入文件struct
 	var savePath = t.savePath
 	// 是否指定保存路径
@@ -366,6 +408,9 @@ func (t *Table2Struct) getColumns(table ...string) (tableColumns map[string][]co
 		//col.Json = strings.ToLower(col.ColumnName)
 		col.Tag = col.ColumnName
 		col.ColumnName = t.camelCase(col.ColumnName)
+		if t.config.GenNullableType {
+			col.Type = "nullable." + col.Type
+		}
 		col.Type = typeForMysqlToGo[col.Type]
 		jsonTag := col.Tag
 		// 字段首字母本身大写, 是否需要删除tag
